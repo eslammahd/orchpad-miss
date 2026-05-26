@@ -1,8 +1,11 @@
-import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import '../globals.css';
 
-export const metadata: Metadata = {
-  title: 'لوحة تحكم الدكتور - الدكتور سعد المهدي',
-  description: 'لوحة تحكم الدكتور لإدارة المواعيد والحجوزات',
+const inter = Inter({ subsets: ['latin'] });
+
+export const metadata = {
+  title: 'لوحة تحكم الدكتور سعد - إدارة المواعيد',
+  description: 'لوحة تحكم لإدارة مواعيد الاستشارات النفسية',
 };
 
 export default function DashboardLayout({
@@ -10,5 +13,9 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return (
+    <html lang="ar" dir="rtl">
+      <body className={inter.className}>{children}</body>
+    </html>
+  );
 }

@@ -2,36 +2,34 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Calendar, Clock, User, Plus, CheckCircle, XCircle } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
+import { ar } from 'date-fns/locale';
+import { Calendar, Clock, User, Phone, Mail, Plus, CheckCircle, XCircle } from 'lucide-react';
 
 interface Appointment {
   id: string;
   date: string;
   time: string;
-  is_booked: boolean;
+  available: boolean;
   patient_name?: string;
   patient_email?: string;
   patient_phone?: string;
   payment_status?: string;
 }
 
-interface NewAppointment {
-  date: string;
-  time: string;
-}
-
-export default function DashboardPage() {
+export default function Dashboard() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newAppointment, setNewAppointment] = useState<NewAppointment>({ date: '', time: '' });
+  const [newDate, setNewDate] = useState('');
+  const [newTime, setNewTime] = useState('');
   const [adding, setAdding] = useState(false);
 
   useEffect(() => {
     fetchAppointments();
   }, []);
 
-  const fetchAppointments = async () => {
+  async function fetchAppointments() {
     try {
       const { data, error } = await supabase
         .from('appointments')
@@ -46,231 +44,214 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const handleAddAppointment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newAppointment.date || !newAppointment.time) return;
-
+  async function addAppointment() {
+    if (!newDate || !newTime) return;
+    
     setAdding(true);
     try {
       const { error } = await supabase
         .from('appointments')
-        .insert([{
-          date: newAppointment.date,
-          time: newAppointment.time,
-          is_booked: false
-        }]);
+        .insert({
+          date: newDate,
+          time: newTime,
+          available: true
+        });
 
       if (error) throw error;
-
-      setNewAppointment({ date: '', time: '' });
+      
+      setNewDate('');
+      setNewTime('');
       setShowAddForm(false);
       fetchAppointments();
     } catch (error) {
       console.error('Error adding appointment:', error);
-      alert('حدث خطأ في إضافة الموعد');
     } finally {
       setAdding(false);
     }
-  };
+  }
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('ar-EG', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
-  const formatTime = (timeStr: string) => {
-    return new Date(`2000-01-01T${timeStr}`).toLocaleTimeString('ar-EG', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
-  };
+  const bookedAppointments = appointments.filter(apt => !apt.available);
+  const availableAppointments = appointments.filter(apt => apt.available);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="text-xl text-gray-600">جاري التحميل...</div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">جاري التحميل...</p>
+        </div>
       </div>
     );
   }
 
-  const bookedAppointments = appointments.filter(apt => apt.is_booked);
-  const availableAppointments = appointments.filter(apt => !apt.is_booked);
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gray-50" dir="rtl">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4 rtl:space-x-reverse">
-              <h1 className="text-2xl font-bold text-gray-900">لوحة تحكم الدكتور سعد المهدي</h1>
+          <div className="flex justify-between items-center py-6">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">لوحة تحكم الدكتور سعد</h1>
+              <p className="text-gray-600">إدارة المواعيد والحجوزات</p>
             </div>
             <button
               onClick={() => setShowAddForm(true)}
-              className="flex items-center space-x-2 rtl:space-x-reverse bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors"
             >
-              <Plus className="h-5 w-5" />
-              <span>إضافة موعد جديد</span>
+              <Plus className="w-5 h-5" />
+              إضافة موعد جديد
             </button>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Cards */}
+        {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="bg-white p-6 rounded-lg shadow-sm">
             <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Calendar className="h-8 w-8 text-blue-600" />
+              <div className="p-3 bg-green-100 rounded-lg">
+                <CheckCircle className="w-6 h-6 text-green-600" />
               </div>
               <div className="mr-4">
-                <div className="text-2xl font-bold text-gray-900">{appointments.length}</div>
-                <div className="text-sm text-gray-600">إجمالي المواعيد</div>
+                <p className="text-sm font-medium text-gray-600">الحجوزات المؤكدة</p>
+                <p className="text-2xl font-bold text-gray-900">{bookedAppointments.length}</p>
               </div>
             </div>
           </div>
-
-          <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="bg-white p-6 rounded-lg shadow-sm">
             <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <CheckCircle className="h-8 w-8 text-green-600" />
+              <div className="p-3 bg-blue-100 rounded-lg">
+                <Calendar className="w-6 h-6 text-blue-600" />
               </div>
               <div className="mr-4">
-                <div className="text-2xl font-bold text-gray-900">{bookedAppointments.length}</div>
-                <div className="text-sm text-gray-600">محجوز</div>
+                <p className="text-sm font-medium text-gray-600">المواعيد المتاحة</p>
+                <p className="text-2xl font-bold text-gray-900">{availableAppointments.length}</p>
               </div>
             </div>
           </div>
-
-          <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="bg-white p-6 rounded-lg shadow-sm">
             <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Clock className="h-8 w-8 text-orange-600" />
+              <div className="p-3 bg-purple-100 rounded-lg">
+                <Clock className="w-6 h-6 text-purple-600" />
               </div>
               <div className="mr-4">
-                <div className="text-2xl font-bold text-gray-900">{availableAppointments.length}</div>
-                <div className="text-sm text-gray-600">متاح</div>
+                <p className="text-sm font-medium text-gray-600">إجمالي المواعيد</p>
+                <p className="text-2xl font-bold text-gray-900">{appointments.length}</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Appointments Tables */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Booked Appointments */}
-          <div className="bg-white rounded-xl shadow-sm">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-                <CheckCircle className="h-5 w-5 text-green-600 ml-2" />
-                المواعيد المحجوزة
-              </h2>
-            </div>
-            <div className="p-6">
-              {bookedAppointments.length === 0 ? (
-                <div className="text-center text-gray-500 py-8">
-                  لا توجد مواعيد محجوزة حالياً
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {bookedAppointments.map((appointment) => (
-                    <div key={appointment.id} className="border rounded-lg p-4 bg-green-50">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <div className="font-medium text-gray-900">
-                            {formatDate(appointment.date)}
-                          </div>
-                          <div className="text-sm text-gray-600">
-                            {formatTime(appointment.time)}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="flex items-center text-green-600">
-                            <User className="h-4 w-4 ml-1" />
-                            <span className="text-sm font-medium">محجوز</span>
-                          </div>
-                        </div>
-                      </div>
-                      {appointment.patient_name && (
-                        <div className="mt-3 pt-3 border-t border-green-200">
-                          <div className="text-sm text-gray-700">
-                            <strong>المريض:</strong> {appointment.patient_name}
-                          </div>
-                          {appointment.patient_email && (
-                            <div className="text-sm text-gray-600">
-                              <strong>الإيميل:</strong> {appointment.patient_email}
-                            </div>
-                          )}
-                          {appointment.patient_phone && (
-                            <div className="text-sm text-gray-600">
-                              <strong>الهاتف:</strong> {appointment.patient_phone}
-                            </div>
-                          )}
-                          {appointment.payment_status && (
-                            <div className="text-sm">
-                              <strong>حالة الدفع:</strong>
-                              <span className={`mr-2 px-2 py-1 rounded-full text-xs ${
-                                appointment.payment_status === 'paid'
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-yellow-100 text-yellow-800'
-                              }`}>
-                                {appointment.payment_status === 'paid' ? 'تم الدفع' : 'في الانتظار'}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+        {/* Bookings Table */}
+        <div className="bg-white rounded-lg shadow-sm mb-8">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">الحجوزات المؤكدة</h2>
           </div>
-
-          {/* Available Appointments */}
-          <div className="bg-white rounded-xl shadow-sm">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-                <Clock className="h-5 w-5 text-orange-600 ml-2" />
-                المواعيد المتاحة
-              </h2>
-            </div>
-            <div className="p-6">
-              {availableAppointments.length === 0 ? (
-                <div className="text-center text-gray-500 py-8">
-                  لا توجد مواعيد متاحة حالياً
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {availableAppointments.map((appointment) => (
-                    <div key={appointment.id} className="border rounded-lg p-4 bg-orange-50">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <div className="font-medium text-gray-900">
-                            {formatDate(appointment.date)}
-                          </div>
-                          <div className="text-sm text-gray-600">
-                            {formatTime(appointment.time)}
+          <div className="overflow-x-auto">
+            {bookedAppointments.length > 0 ? (
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      التاريخ والوقت
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      بيانات المريض
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      حالة الدفع
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {bookedAppointments.map((appointment) => (
+                    <tr key={appointment.id}>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <Calendar className="w-4 h-4 text-gray-400 ml-2" />
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">
+                              {format(parseISO(appointment.date), 'EEEE، d MMMM yyyy', { locale: ar })}
+                            </div>
+                            <div className="text-sm text-gray-500 flex items-center">
+                              <Clock className="w-3 h-3 ml-1" />
+                              {appointment.time}
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center text-orange-600">
-                          <Clock className="h-4 w-4 ml-1" />
-                          <span className="text-sm font-medium">متاح</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          <div className="flex items-center mb-1">
+                            <User className="w-4 h-4 text-gray-400 ml-2" />
+                            {appointment.patient_name}
+                          </div>
+                          <div className="flex items-center mb-1">
+                            <Mail className="w-4 h-4 text-gray-400 ml-2" />
+                            {appointment.patient_email}
+                          </div>
+                          <div className="flex items-center">
+                            <Phone className="w-4 h-4 text-gray-400 ml-2" />
+                            {appointment.patient_phone}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          <CheckCircle className="w-3 h-3 ml-1" />
+                          تم الدفع
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="text-center py-12">
+                <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">لا توجد حجوزات بعد</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Available Appointments */}
+        <div className="bg-white rounded-lg shadow-sm">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">المواعيد المتاحة</h2>
+          </div>
+          <div className="p-6">
+            {availableAppointments.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {availableAppointments.map((appointment) => (
+                  <div key={appointment.id} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {format(parseISO(appointment.date), 'EEEE، d MMMM', { locale: ar })}
+                        </div>
+                        <div className="text-sm text-gray-500 flex items-center mt-1">
+                          <Clock className="w-3 h-3 ml-1" />
+                          {appointment.time}
                         </div>
                       </div>
+                      <div className="flex items-center text-green-600">
+                        <CheckCircle className="w-4 h-4 ml-1" />
+                        <span className="text-xs">متاح</span>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <XCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">لا توجد مواعيد متاحة</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -278,54 +259,62 @@ export default function DashboardPage() {
       {/* Add Appointment Modal */}
       {showAddForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-md w-full p-6">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">إضافة موعد جديد</h3>
-            <form onSubmit={handleAddAppointment} className="space-y-4">
+            
+            <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   التاريخ
                 </label>
                 <input
                   type="date"
-                  value={newAppointment.date}
-                  onChange={(e) => setNewAppointment({ ...newAppointment, date: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  required
+                  value={newDate}
+                  onChange={(e) => setNewDate(e.target.value)}
                   min={new Date().toISOString().split('T')[0]}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
+              
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   الوقت
                 </label>
-                <input
-                  type="time"
-                  value={newAppointment.time}
-                  onChange={(e) => setNewAppointment({ ...newAppointment, time: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-              </div>
-              <div className="flex space-x-3 rtl:space-x-reverse pt-4">
-                <button
-                  type="submit"
-                  disabled={adding}
-                  className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                <select
+                  value={newTime}
+                  onChange={(e) => setNewTime(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  {adding ? 'جاري الإضافة...' : 'إضافة الموعد'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAddForm(false);
-                    setNewAppointment({ date: '', time: '' });
-                  }}
-                  className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400"
-                >
-                  إلغاء
-                </button>
+                  <option value="">اختر الوقت</option>
+                  <option value="09:00">9:00 صباحاً</option>
+                  <option value="10:00">10:00 صباحاً</option>
+                  <option value="11:00">11:00 صباحاً</option>
+                  <option value="12:00">12:00 ظهراً</option>
+                  <option value="14:00">2:00 مساءً</option>
+                  <option value="15:00">3:00 مساءً</option>
+                  <option value="16:00">4:00 مساءً</option>
+                  <option value="17:00">5:00 مساءً</option>
+                  <option value="18:00">6:00 مساءً</option>
+                  <option value="19:00">7:00 مساءً</option>
+                </select>
               </div>
-            </form>
+            </div>
+            
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setShowAddForm(false)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                إلغاء
+              </button>
+              <button
+                onClick={addAppointment}
+                disabled={!newDate || !newTime || adding}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {adding ? 'جاري الإضافة...' : 'إضافة'}
+              </button>
+            </div>
           </div>
         </div>
       )}
