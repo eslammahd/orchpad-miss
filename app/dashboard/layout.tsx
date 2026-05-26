@@ -1,10 +1,14 @@
-import type { Metadata } from 'next'
+import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'لوحة التحكم — د. سعد المهدي',
-  description: 'لوحة تحكم الدكتور سعد المهدي',
-}
+  title: 'لوحة تحكم الدكتور - الدكتور سعد المهدي',
+  description: 'لوحة تحكم الدكتور لإدارة المواعيد والحجوزات',
+};
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return children;
 }
